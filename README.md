@@ -1,5 +1,3 @@
-Got it 🚀 Here’s a clean **README.md** content for your **Syncstack** project, with proper formatting and official links:
-
 ---
 
 # Syncstack
