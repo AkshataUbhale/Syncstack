@@ -1,9 +1,9 @@
 "use client";
 
-import { useClerk, SignedIn, SignedOut } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { CloudUpload, ChevronDown, User, Menu, X } from "lucide-react";
+import { CloudUpload, ChevronDown, User, Menu, X, Sparkles, Folder, LogOut } from "lucide-react";
 import {
   Dropdown,
   DropdownTrigger,
@@ -29,17 +29,16 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const { signOut } = useClerk();
+  const { isSignedIn, user: clerkUser } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Check if we're on the dashboard page
   const isOnDashboard =
     pathname === "/dashboard" || pathname?.startsWith("/dashboard/");
 
-  // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -49,7 +48,6 @@ export default function Navbar({ user }: NavbarProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close mobile menu when window is resized to desktop size
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -61,40 +59,9 @@ export default function Navbar({ user }: NavbarProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Handle body scroll lock when mobile menu is open
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMobileMenuOpen]);
-
-  // Handle clicks outside the mobile menu
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        isMobileMenuOpen &&
-        mobileMenuRef.current &&
-        !mobileMenuRef.current.contains(event.target as Node)
-      ) {
-        // Check if the click is not on the menu button (which has its own handler)
-        const target = event.target as HTMLElement;
-        if (!target.closest('[data-menu-button="true"]')) {
-          setIsMobileMenuOpen(false);
-        }
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isMobileMenuOpen]);
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   const handleSignOut = () => {
     signOut(() => {
@@ -102,236 +69,236 @@ export default function Navbar({ user }: NavbarProps) {
     });
   };
 
-  // Process user data with defaults if not provided
+  const activeUser = user || (clerkUser ? {
+    id: clerkUser.id,
+    firstName: clerkUser.firstName,
+    lastName: clerkUser.lastName,
+    imageUrl: clerkUser.imageUrl,
+    username: clerkUser.username,
+    emailAddress: clerkUser.primaryEmailAddress?.emailAddress,
+  } : null);
+
   const userDetails = {
-    fullName: user
-      ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+    fullName: activeUser
+      ? `${activeUser.firstName || ""} ${activeUser.lastName || ""}`.trim()
       : "",
-    initials: user
-      ? `${user.firstName || ""} ${user.lastName || ""}`
+    initials: activeUser
+      ? `${activeUser.firstName || ""} ${activeUser.lastName || ""}`
           .trim()
           .split(" ")
           .map((name) => name?.[0] || "")
           .join("")
           .toUpperCase() || "U"
       : "U",
-    displayName: user
-      ? user.firstName && user.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user.firstName || user.username || user.emailAddress || "User"
+    displayName: activeUser
+      ? activeUser.firstName && activeUser.lastName
+        ? `${activeUser.firstName} ${activeUser.lastName}`
+        : activeUser.firstName || activeUser.username || activeUser.emailAddress || "User"
       : "User",
-    email: user?.emailAddress || "",
-  };
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+    email: activeUser?.emailAddress || "",
   };
 
   return (
     <header
-      className={`bg-default-50 border-b border-default-200 sticky top-0 z-50 transition-shadow ${isScrolled ? "shadow-sm" : ""}`}
+      className={`sticky top-0 z-50 transition-all duration-200 ${
+        isScrolled
+          ? "bg-zinc-950/85 backdrop-blur-xl border-b border-zinc-800 shadow-lg shadow-black/40"
+          : "bg-zinc-950/60 backdrop-blur-md border-b border-zinc-800/60"
+      }`}
     >
-      <div className="container mx-auto py-3 md:py-4 px-4 md:px-6">
+      <div className="container mx-auto py-3.5 px-4 md:px-6">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 z-10">
-            <CloudUpload className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">Droply</h1>
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="p-1.5 rounded-xl bg-primary/10 text-primary border border-primary/20 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+              <CloudUpload className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-extrabold tracking-tight text-zinc-100 group-hover:text-primary transition-colors">
+              Syncstack
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex gap-4 items-center">
-            {/* Show these buttons when user is signed out */}
-            <SignedOut>
-              <Link href="/sign-in">
-                <Button variant="flat" color="primary">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/sign-up">
-                <Button variant="solid" color="primary">
-                  Sign Up
-                </Button>
-              </Link>
-            </SignedOut>
-
-            {/* Show these when user is signed in */}
-            <SignedIn>
-              <div className="flex items-center gap-4">
+          <div className="hidden md:flex gap-3 items-center">
+            {!isSignedIn ? (
+              <>
+                <Link href="/sign-in">
+                  <Button variant="light" className="text-zinc-300 hover:text-white font-medium">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button
+                    color="primary"
+                    variant="solid"
+                    className="font-medium shadow-md shadow-primary/20"
+                  >
+                    Get Started Free
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <div className="flex items-center gap-3">
                 {!isOnDashboard && (
                   <Link href="/dashboard">
-                    <Button variant="flat" color="primary">
+                    <Button
+                      color="primary"
+                      variant="flat"
+                      size="sm"
+                      className="font-medium bg-primary/10 border border-primary/20 text-primary"
+                    >
                       Dashboard
                     </Button>
                   </Link>
                 )}
-                <Dropdown>
+
+                <Dropdown placement="bottom-end">
                   <DropdownTrigger>
-                    <Button
-                      variant="flat"
-                      className="p-0 bg-transparent min-w-0"
-                      endContent={<ChevronDown className="h-4 w-4 ml-2" />}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Avatar
-                          name={userDetails.initials}
-                          size="sm"
-                          src={user?.imageUrl || undefined}
-                          className="h-8 w-8 flex-shrink-0"
-                          fallback={<User className="h-4 w-4" />}
-                        />
-                        <span className="text-default-600 hidden sm:inline">
-                          {userDetails.displayName}
-                        </span>
-                      </div>
-                    </Button>
+                    <button className="flex items-center gap-2.5 p-1 rounded-full hover:bg-zinc-900 border border-zinc-800/80 transition-all cursor-pointer focus:outline-none">
+                      <Avatar
+                        name={userDetails.initials}
+                        size="sm"
+                        src={activeUser?.imageUrl || undefined}
+                        className="h-8 w-8 text-xs border border-zinc-700"
+                        fallback={<User className="h-4 w-4" />}
+                      />
+                      <span className="text-xs font-medium text-zinc-200 hidden lg:inline max-w-[120px] truncate pr-1">
+                        {userDetails.displayName}
+                      </span>
+                      <ChevronDown className="h-3.5 w-3.5 text-zinc-400 mr-1.5" />
+                    </button>
                   </DropdownTrigger>
-                  <DropdownMenu aria-label="User actions">
+                  <DropdownMenu
+                    aria-label="User actions"
+                    className="w-56"
+                    classNames={{
+                      base: "border border-zinc-800 bg-zinc-950/95 shadow-xl backdrop-blur-xl",
+                    }}
+                  >
                     <DropdownItem
                       key="profile"
-                      description={userDetails.email || "View your profile"}
+                      description={userDetails.email || "Account settings"}
                       onClick={() => router.push("/dashboard?tab=profile")}
+                      startContent={<User className="h-4 w-4 text-zinc-400" />}
                     >
-                      Profile
+                      Profile Settings
                     </DropdownItem>
                     <DropdownItem
                       key="files"
-                      description="Manage your files"
+                      description="View all uploaded files"
                       onClick={() => router.push("/dashboard")}
+                      startContent={<Folder className="h-4 w-4 text-zinc-400" />}
                     >
-                      My Files
+                      My Storage
                     </DropdownItem>
                     <DropdownItem
                       key="logout"
-                      description="Sign out of your account"
+                      description="Sign out of Syncstack"
                       className="text-danger"
                       color="danger"
                       onClick={handleSignOut}
+                      startContent={<LogOut className="h-4 w-4 text-danger" />}
                     >
                       Sign Out
                     </DropdownItem>
                   </DropdownMenu>
                 </Dropdown>
               </div>
-            </SignedIn>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
-            <SignedIn>
-              <Avatar
-                name={userDetails.initials}
-                size="sm"
-                src={user?.imageUrl || undefined}
-                className="h-8 w-8 flex-shrink-0"
-                fallback={<User className="h-4 w-4" />}
-              />
-            </SignedIn>
             <button
-              className="z-50 p-2"
-              onClick={toggleMobileMenu}
+              className="p-2 rounded-xl text-zinc-300 hover:text-white bg-zinc-900 border border-zinc-800 focus:outline-none"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-              data-menu-button="true"
             >
               {isMobileMenuOpen ? (
-                <X className="h-6 w-6 text-default-700" />
+                <X className="h-5 w-5" />
               ) : (
-                <Menu className="h-6 w-6 text-default-700" />
+                <Menu className="h-5 w-5" />
               )}
             </button>
           </div>
-
-          {/* Mobile Menu Overlay */}
-          {isMobileMenuOpen && (
-            <div
-              className="fixed inset-0 bg-black/20 z-40 md:hidden"
-              onClick={() => setIsMobileMenuOpen(false)}
-              aria-hidden="true"
-            />
-          )}
-
-          {/* Mobile Menu */}
-          <div
-            ref={mobileMenuRef}
-            className={`fixed top-0 right-0 bottom-0 w-4/5 max-w-sm bg-default-50 z-40 flex flex-col pt-20 px-6 shadow-xl transition-transform duration-300 ease-in-out ${
-              isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-            } md:hidden`}
-          >
-            <SignedOut>
-              <div className="flex flex-col gap-4 items-center">
-                <Link
-                  href="/sign-in"
-                  className="w-full"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Button variant="flat" color="primary" className="w-full">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link
-                  href="/sign-up"
-                  className="w-full"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Button variant="solid" color="primary" className="w-full">
-                    Sign Up
-                  </Button>
-                </Link>
-              </div>
-            </SignedOut>
-
-            <SignedIn>
-              <div className="flex flex-col gap-6">
-                {/* User info */}
-                <div className="flex items-center gap-3 py-4 border-b border-default-200">
-                  <Avatar
-                    name={userDetails.initials}
-                    size="md"
-                    src={user?.imageUrl || undefined}
-                    className="h-10 w-10 flex-shrink-0"
-                    fallback={<User className="h-5 w-5" />}
-                  />
-                  <div>
-                    <p className="font-medium">{userDetails.displayName}</p>
-                    <p className="text-sm text-default-500">
-                      {userDetails.email}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Navigation links */}
-                <div className="flex flex-col gap-4">
-                  {!isOnDashboard && (
-                    <Link
-                      href="/dashboard"
-                      className="py-2 px-3 hover:bg-default-100 rounded-md transition-colors"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                  )}
-                  <Link
-                    href="/dashboard?tab=profile"
-                    className="py-2 px-3 hover:bg-default-100 rounded-md transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Profile
-                  </Link>
-                  <button
-                    className="py-2 px-3 text-left text-danger hover:bg-danger-50 rounded-md transition-colors mt-4"
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      handleSignOut();
-                    }}
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            </SignedIn>
-          </div>
         </div>
       </div>
+
+      {/* Mobile Drawer Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-2xl px-6 py-5 space-y-4">
+          {!isSignedIn ? (
+            <div className="flex flex-col gap-2.5">
+              <Link href="/sign-in" className="w-full">
+                <Button variant="bordered" className="w-full border-zinc-700 text-zinc-200">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/sign-up" className="w-full">
+                <Button color="primary" variant="solid" className="w-full font-medium">
+                  Get Started Free
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-zinc-900 border border-zinc-800">
+                <Avatar
+                  name={userDetails.initials}
+                  size="sm"
+                  src={activeUser?.imageUrl || undefined}
+                  className="h-10 w-10 text-xs"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-zinc-100 truncate">
+                    {userDetails.displayName}
+                  </p>
+                  <p className="text-xs text-zinc-400 truncate">
+                    {userDetails.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Button
+                  variant="light"
+                  className="w-full justify-start text-zinc-300"
+                  onClick={() => {
+                    router.push("/dashboard");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  startContent={<Folder className="h-4 w-4" />}
+                >
+                  My Storage
+                </Button>
+                <Button
+                  variant="light"
+                  className="w-full justify-start text-zinc-300"
+                  onClick={() => {
+                    router.push("/dashboard?tab=profile");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  startContent={<User className="h-4 w-4" />}
+                >
+                  Profile Settings
+                </Button>
+                <Button
+                  variant="light"
+                  color="danger"
+                  className="w-full justify-start text-danger"
+                  onClick={() => {
+                    handleSignOut();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  startContent={<LogOut className="h-4 w-4" />}
+                >
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </header>
   );
 }

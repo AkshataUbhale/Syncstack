@@ -11,6 +11,9 @@ import {
   AlertTriangle,
   FolderPlus,
   ArrowRight,
+  Image as ImageIcon,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
 import { addToast } from "@heroui/toast";
 import {
@@ -34,6 +37,7 @@ export default function FileUploadForm({
   currentFolder = null,
 }: FileUploadFormProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -44,34 +48,35 @@ export default function FileUploadForm({
   const [folderName, setFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
 
+  const handleSelectedFile = (selectedFile: File) => {
+    // Validate file size (5MB limit)
+    if (selectedFile.size > 5 * 1024 * 1024) {
+      setError("File size exceeds 5MB limit");
+      return;
+    }
+
+    setFile(selectedFile);
+    setError(null);
+
+    // Create a local blob preview for images
+    if (selectedFile.type.startsWith("image/")) {
+      const url = URL.createObjectURL(selectedFile);
+      setPreviewUrl(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-
-      // Validate file size (5MB limit)
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError("File size exceeds 5MB limit");
-        return;
-      }
-
-      setFile(selectedFile);
-      setError(null);
+      handleSelectedFile(e.target.files[0]);
     }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const droppedFile = e.dataTransfer.files[0];
-
-      // Validate file size (5MB limit)
-      if (droppedFile.size > 5 * 1024 * 1024) {
-        setError("File size exceeds 5MB limit");
-        return;
-      }
-
-      setFile(droppedFile);
-      setError(null);
+      handleSelectedFile(e.dataTransfer.files[0]);
     }
   };
 
@@ -80,7 +85,11 @@ export default function FileUploadForm({
   };
 
   const clearFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setFile(null);
+    setPreviewUrl(null);
     setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -118,23 +127,22 @@ export default function FileUploadForm({
 
       addToast({
         title: "Upload Successful",
-        description: `${file.name} has been uploaded successfully.`,
+        description: `"${file.name}" uploaded to cloud storage`,
         color: "success",
       });
 
-      // Clear the file after successful upload
       clearFile();
 
-      // Call the onUploadSuccess callback if provided
       if (onUploadSuccess) {
         onUploadSuccess();
       }
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      setError("Failed to upload file. Please try again.");
+    } catch (err: any) {
+      console.error("Error uploading file:", err);
+      const message = err.response?.data?.error || "Failed to upload file. Please try again.";
+      setError(message);
       addToast({
         title: "Upload Failed",
-        description: "We couldn't upload your file. Please try again.",
+        description: message,
         color: "danger",
       });
     } finally {
@@ -163,23 +171,21 @@ export default function FileUploadForm({
 
       addToast({
         title: "Folder Created",
-        description: `Folder "${folderName}" has been created successfully.`,
+        description: `Folder "${folderName}" created successfully`,
         color: "success",
       });
 
-      // Reset folder name and close modal
       setFolderName("");
       setFolderModalOpen(false);
 
-      // Call the onUploadSuccess callback to refresh the file list
       if (onUploadSuccess) {
         onUploadSuccess();
       }
-    } catch (error) {
-      console.error("Error creating folder:", error);
+    } catch (err: any) {
+      console.error("Error creating folder:", err);
       addToast({
-        title: "Folder Creation Failed",
-        description: "We couldn't create the folder. Please try again.",
+        title: "Creation Failed",
+        description: err.response?.data?.error || "Could not create folder.",
         color: "danger",
       });
     } finally {
@@ -189,119 +195,140 @@ export default function FileUploadForm({
 
   return (
     <div className="space-y-4">
-      {/* Action buttons */}
-      <div className="flex gap-2 mb-2">
+      {/* Action shortcuts */}
+      <div className="flex gap-2">
         <Button
           color="primary"
           variant="flat"
           startContent={<FolderPlus className="h-4 w-4" />}
           onClick={() => setFolderModalOpen(true)}
-          className="flex-1"
+          className="flex-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
         >
           New Folder
         </Button>
         <Button
           color="primary"
-          variant="flat"
+          variant="solid"
           startContent={<FileUp className="h-4 w-4" />}
           onClick={() => fileInputRef.current?.click()}
-          className="flex-1"
+          className="flex-1 font-medium shadow-md shadow-primary/20"
         >
-          Add Image
+          Choose File
         </Button>
       </div>
 
-      {/* File drop area */}
+      {/* Interactive Dropzone */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+        className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 ${
           error
-            ? "border-danger/30 bg-danger/5"
+            ? "border-danger/40 bg-danger/5"
             : file
-              ? "border-primary/30 bg-primary/5"
-              : "border-default-300 hover:border-primary/5"
+              ? "border-primary/50 bg-primary/5"
+              : "border-zinc-800 hover:border-primary/40 bg-zinc-950/40 hover:bg-zinc-900/40"
         }`}
       >
         {!file ? (
-          <div className="space-y-3">
-            <FileUp className="h-12 w-12 mx-auto text-primary/70" />
+          <div className="space-y-3 py-2">
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+              <FileUp className="h-6 w-6" />
+            </div>
             <div>
-              <p className="text-default-600">
-                Drag and drop your image here, or{" "}
+              <p className="text-sm font-medium text-zinc-200">
+                Drag & drop your images here
+              </p>
+              <p className="text-xs text-zinc-400 mt-1">
+                or{" "}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-primary cursor-pointer font-medium inline bg-transparent border-0 p-0 m-0"
+                  className="text-primary hover:underline font-medium cursor-pointer"
                 >
-                  browse
+                  browse from device
                 </button>
               </p>
-              <p className="text-xs text-default-500 mt-1">Images up to 5MB</p>
             </div>
-            <Input
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400">
+              <span>Supports JPG, PNG, GIF, WebP up to 5MB</span>
+            </div>
+            <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
               className="hidden"
-              accept="image/*"
+              accept="image/*,application/pdf"
             />
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-primary/10 rounded-md">
-                  <FileUp className="h-5 w-5 text-primary" />
+          <div className="space-y-4">
+            {/* Selected File Card with Image Preview */}
+            <div className="flex items-center gap-3 bg-zinc-900/90 p-3 rounded-xl border border-zinc-800 text-left">
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="w-12 h-12 rounded-lg object-cover border border-zinc-800 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 flex-shrink-0">
+                  <ImageIcon className="h-6 w-6" />
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-medium truncate max-w-[180px]">
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-default-500">
-                    {file.size < 1024
-                      ? `${file.size} B`
-                      : file.size < 1024 * 1024
-                        ? `${(file.size / 1024).toFixed(1)} KB`
-                        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`}
-                  </p>
-                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-zinc-100 truncate">
+                  {file.name}
+                </p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  {file.size < 1024
+                    ? `${file.size} B`
+                    : file.size < 1024 * 1024
+                      ? `${(file.size / 1024).toFixed(1)} KB`
+                      : `${(file.size / (1024 * 1024)).toFixed(2)} MB`}
+                </p>
               </div>
+
               <Button
                 isIconOnly
-                variant="light"
                 size="sm"
+                variant="light"
                 onClick={clearFile}
-                className="text-default-500"
+                className="text-zinc-400 hover:text-zinc-100"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
             {error && (
-              <div className="bg-danger-5 text-danger-700 p-3 rounded-lg flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="text-sm">{error}</span>
+              <div className="bg-danger/10 text-danger border border-danger/20 p-2.5 rounded-lg flex items-center gap-2 text-xs">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
             {uploading && (
-              <Progress
-                value={progress}
-                color="primary"
-                size="sm"
-                showValueLabel={true}
-                className="max-w-full"
-              />
+              <div className="space-y-1.5 text-left">
+                <div className="flex justify-between text-xs text-zinc-400">
+                  <span>Uploading to CDN...</span>
+                  <span className="font-mono text-primary font-medium">{progress}%</span>
+                </div>
+                <Progress
+                  value={progress}
+                  color="primary"
+                  size="sm"
+                  className="max-w-full"
+                />
+              </div>
             )}
 
             <Button
               color="primary"
-              startContent={<Upload className="h-4 w-4" />}
+              startContent={!uploading && <Upload className="h-4 w-4" />}
               endContent={!uploading && <ArrowRight className="h-4 w-4" />}
               onClick={handleUpload}
               isLoading={uploading}
-              className="w-full"
+              className="w-full font-medium shadow-md shadow-primary/20"
               isDisabled={!!error}
             >
               {uploading ? `Uploading... ${progress}%` : "Upload Image"}
@@ -310,14 +337,22 @@ export default function FileUploadForm({
         )}
       </div>
 
-      {/* Upload tips */}
-      <div className="bg-default-100/5 p-4 rounded-lg">
-        <h4 className="text-sm font-medium mb-2">Tips</h4>
-        <ul className="text-xs text-default-600 space-y-1">
-          <li>• Images are private and only visible to you</li>
-          <li>• Supported formats: JPG, PNG, GIF, WebP</li>
-          <li>• Maximum file size: 5MB</li>
-        </ul>
+      {/* Cloud features overview pills */}
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-yellow-400 flex-shrink-0" />
+          <div className="text-left">
+            <p className="text-[11px] font-medium text-zinc-300">Fast CDN Delivery</p>
+            <p className="text-[10px] text-zinc-500">Instant edge cache</p>
+          </div>
+        </div>
+        <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/60 flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-success flex-shrink-0" />
+          <div className="text-left">
+            <p className="text-[11px] font-medium text-zinc-300">Private & Secure</p>
+            <p className="text-[10px] text-zinc-500">Encrypted token auth</p>
+          </div>
+        </div>
       </div>
 
       {/* Create Folder Modal */}
@@ -326,35 +361,38 @@ export default function FileUploadForm({
         onOpenChange={setFolderModalOpen}
         backdrop="blur"
         classNames={{
-          base: "border border-default-200 bg-default-5",
-          header: "border-b border-default-200",
-          footer: "border-t border-default-200",
+          base: "border border-zinc-800 bg-zinc-950/95 shadow-2xl backdrop-blur-xl",
+          header: "border-b border-zinc-800",
+          footer: "border-t border-zinc-800",
         }}
       >
         <ModalContent>
           <ModalHeader className="flex gap-2 items-center">
             <FolderPlus className="h-5 w-5 text-primary" />
-            <span>New Folder</span>
+            <span className="text-zinc-100">Create New Folder</span>
           </ModalHeader>
-          <ModalBody>
-            <div className="space-y-4">
-              <p className="text-sm text-default-600">
-                Enter a name for your folder:
+          <ModalBody className="py-6">
+            <div className="space-y-3">
+              <p className="text-xs text-zinc-400">
+                Organize your files by creating a new directory.
               </p>
               <Input
                 type="text"
                 label="Folder Name"
-                placeholder="My Images"
+                placeholder="e.g. Travel Photos, Screenshots"
                 value={folderName}
                 onChange={(e) => setFolderName(e.target.value)}
                 autoFocus
+                variant="bordered"
+                classNames={{
+                  inputWrapper: "border-zinc-700 bg-zinc-900",
+                }}
               />
             </div>
           </ModalBody>
           <ModalFooter>
             <Button
               variant="flat"
-              color="default"
               onClick={() => setFolderModalOpen(false)}
             >
               Cancel
@@ -366,7 +404,7 @@ export default function FileUploadForm({
               isDisabled={!folderName.trim()}
               endContent={!creatingFolder && <ArrowRight className="h-4 w-4" />}
             >
-              Create
+              Create Folder
             </Button>
           </ModalFooter>
         </ModalContent>

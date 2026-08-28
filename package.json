@@ -13,8 +13,10 @@
     "db:migrate": "tsx src/lib/db/migrate.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.12.4",
-    "@heroui/avatar": "^2.2.12",
+    "@clerk/nextjs": "^7.8.2",
+    "@clerk/shared": "^2.20.18",
+    "@clerk/themes": "^2.2.20",
+    "@heroui/avatar": "^2.2.22",
     "@heroui/badge": "^2.2.10",
     "@heroui/button": "2.2.16",
     "@heroui/card": "^2.2.15",
@@ -31,10 +33,10 @@
     "@heroui/snippet": "2.2.17",
     "@heroui/spinner": "^2.2.13",
     "@heroui/switch": "2.2.14",
-    "@heroui/system": "2.4.12",
+    "@heroui/system": "^2.4.23",
     "@heroui/table": "^2.2.15",
     "@heroui/tabs": "^2.2.13",
-    "@heroui/theme": "2.4.12",
+    "@heroui/theme": "^2.4.23",
     "@heroui/toast": "^2.0.6",
     "@heroui/tooltip": "^2.2.13",
     "@hookform/resolvers": "^4.1.3",
@@ -61,7 +63,7 @@
   "devDependencies": {
     "@next/eslint-plugin-next": "15.0.4",
     "@react-types/shared": "3.25.0",
-    "@tailwindcss/postcss": "^4.0.13",
+    "@tailwindcss/postcss": "^4.1.14",
     "@types/node": "20.5.7",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
@@ -83,7 +85,7 @@
     "postcss": "8.4.49",
     "prettier": "3.3.3",
     "tailwind-variants": "0.3.0",
-    "tailwindcss": "3.4.16",
+    "tailwindcss": "^4.1.14",
     "tsx": "^4.7.1",
     "typescript": "5.6.3"
   }

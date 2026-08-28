@@ -138,6 +138,7 @@ export default function SignInForm() {
             />
           </div>
 
+          <div id="clerk-captcha" />
           <Button
             type="submit"
             color="primary"

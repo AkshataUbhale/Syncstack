@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
 
     // Create folder path based on parent folder if exists
     const folderPath = parentId
-      ? `/droply/${userId}/folders/${parentId}`
-      : `/droply/${userId}`;
+      ? `/syncstack/${userId}/folders/${parentId}`
+      : `/syncstack/${userId}`;
 
     const uploadResponse = await imagekit.upload({
       file: fileBuffer,
